@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from nn_architecture import NNDataset, NNModel
-from preprocessing import expand_ann
+from helpers.preprocessing import expand_ann
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ import yaml
 def training_loop(imu, ann, hyperparams:dict):
     model = NNModel()
     print(model.parameters())
-    # optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
     # criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
 
     print(imu, ann)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     ann = expanded_ann['ann']
     ann_t = expanded_ann['ann_time']
     
-    with open('nn_hyperparams.yaml', 'r') as f:
+    with open('NN/nn_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
         
     training_loop(hyperparams, imu.to_numpy(), np.array(ann))
