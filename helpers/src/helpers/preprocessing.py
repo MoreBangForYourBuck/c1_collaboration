@@ -1,4 +1,6 @@
 from typing import Dict
+import os
+import pandas as pd
 
 
 def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
@@ -32,3 +34,34 @@ def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
         'ann': ann_out,
         'ann_time': imu_t
     }
+
+def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFrame]:
+    imu = pd.DataFrame()
+    imu_t = pd.DataFrame()
+    ann = pd.DataFrame()
+    ann_t = pd.DataFrame()
+
+    for f in os.listdir(dir_path):
+        if f[-7:] == '__x.csv':
+            x = pd.read_csv(f'{dir_path}/subject_001_01__x.csv')
+            imu = pd.concat([imu, x], axis=0)
+        
+        elif f[-12:] == '__x_time.csv':
+            x = pd.read_csv(f'{dir_path}/subject_001_01__x_time.csv')
+            imu_t = pd.concat([imu_t, x], axis=0)
+            
+        elif f[-7:] == '__y.csv':
+            x = pd.read_csv(f'{dir_path}/subject_001_01__y.csv')
+            ann = pd.concat([ann, x], axis=0)
+            
+        elif f[-12:] == '__y_time.csv':
+            x = pd.read_csv(f'{dir_path}/subject_001_01__y_time.csv')
+            ann_t = pd.concat([ann_t, x], axis=0)
+
+    return {
+        'imu': imu.reset_index(drop=True),
+        'imu_t': imu_t.reset_index(drop=True),
+        'ann': ann.reset_index(drop=True),
+        'ann_t': ann_t.reset_index(drop=True)
+    }
+    
