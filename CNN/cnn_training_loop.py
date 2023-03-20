@@ -11,14 +11,15 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def training_loop(imu, ann, hyperparams:dict):
-    model = CNNModel(num_classes=hyperparams['num_classes'])
+    model = CNNModel(num_classes=hyperparams['num_classes'], window_size=hyperparams['window_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
     criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
 
     # Time series, but still shuffling because no window component
-    # X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.3, shuffle=True, random_state=42)
-    train_generator = DataLoader(CNNDataset(imu, ann), batch_size=hyperparams['batch_size'])
+    # X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.3, random_state=42)
+    train_generator = DataLoader(CNNDataset(imu, ann, hyperparams['window_size']), batch_size=hyperparams['batch_size'],
+                                 shuffle=False)
     # val_generator = DataLoader(CNNDataset(X_val, y_val), batch_size=hyperparams['batch_size'])
 
     train_loss_history = []
