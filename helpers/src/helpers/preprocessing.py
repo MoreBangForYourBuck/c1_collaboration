@@ -42,20 +42,17 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
     ann_t = pd.DataFrame()
 
     for f in os.listdir(dir_path):
+        x = pd.read_csv(f'{dir_path}/{f}')
         if f[-7:] == '__x.csv':
-            x = pd.read_csv(f'{dir_path}/subject_001_01__x.csv')
             imu = pd.concat([imu, x], axis=0)
         
         elif f[-12:] == '__x_time.csv':
-            x = pd.read_csv(f'{dir_path}/subject_001_01__x_time.csv')
             imu_t = pd.concat([imu_t, x], axis=0)
             
         elif f[-7:] == '__y.csv':
-            x = pd.read_csv(f'{dir_path}/subject_001_01__y.csv')
             ann = pd.concat([ann, x], axis=0)
             
         elif f[-12:] == '__y_time.csv':
-            x = pd.read_csv(f'{dir_path}/subject_001_01__y_time.csv')
             ann_t = pd.concat([ann_t, x], axis=0)
 
     return {
