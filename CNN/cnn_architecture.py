@@ -3,15 +3,38 @@ import torch
 
 
 class CNNModel(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes):
         super(CNNModel, self).__init__()
-        self.conv1 = nn.Conv1d(3, 64, kernel_size=1)
-        self.relu = nn.ReLU(inplace=True)
-        self.fc1 = nn.Linear(64*2, 50)
-        self.fc2 = nn.Lienar(50, 1)
+        self.network = nn.Sequential(
+            nn.Conv1d(6, 32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(2), # output: 64 x 125
+
+            nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(2), # output: 128 x 62
+
+            nn.Conv1d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool1d(2), # output: 256 x 31
+
+            nn.Flatten(), 
+            nn.Linear(256*31, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_classes),
+            nn.Softmax(dim=1)
+        )
         
     def forward(self, x):
-        pass
+        return self.network(x)
 
 
 class CNNDataset(torch.utils.data.Dataset):
