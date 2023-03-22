@@ -1,6 +1,7 @@
 from typing import Dict
 import os
 import pandas as pd
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 
 def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
@@ -61,4 +62,16 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
         'ann': ann.reset_index(drop=True),
         'ann_t': ann_t.reset_index(drop=True)
     }
-    
+
+def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:
+    if method == 'divide_mean':
+        for col in df:
+            df[col] = df[col] / df[col].mean()
+    else:
+        if method == 'standard_scale':
+            scaler = StandardScaler()
+            scaler.fit(df)
+        elif method == 'min_max_scale':
+            scaler = MinMaxScaler()
+            scaler.fit(df)
+        return pd.DataFrame(scaler.transform(df), columns=df.columns), scaler
