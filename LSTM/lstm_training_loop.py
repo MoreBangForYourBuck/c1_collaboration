@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from cnn_architecture import CNNDataset, CNNModel
+from lstm_architecture import LSTMDataset, LSTMModel
 from helpers.preprocessing import read_all_data
 import matplotlib.pyplot as plt
 import yaml
@@ -12,14 +12,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def training_loop(imu, ann, hyperparams:dict):
-    model = CNNModel(num_classes=hyperparams['num_classes'], window_size=hyperparams['window_size'])
+
+    model = LSTMModel(num_classes=hyperparams['num_classes'], input_size=hyperparams['input_size'], 
+                    hidden_size=hyperparams['hidden_size'], num_layers=hyperparams['num_layers'],
+                    seq_length=hyperparams['batch_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.MSELoss() # one-hot encoding taken care of by pytorch
 
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
-    train_generator = DataLoader(CNNDataset(X_train, y_train, hyperparams['window_size']), batch_size=hyperparams['batch_size'], shuffle=False)
-    val_generator = DataLoader(CNNDataset(X_val, y_val, hyperparams['window_size']), batch_size=hyperparams['batch_size'],shuffle=False)
+    train_generator = DataLoader(LSTMDataset(X_train, y_train, hyperparams['input_size']), batch_size=hyperparams['batch_size'], shuffle=False)
+    val_generator = DataLoader(LSTMDataset(X_val, y_val, hyperparams['input_size']), batch_size=hyperparams['batch_size'],shuffle=False)
 
     train_loss_history = []
     val_loss_history = []
@@ -102,17 +105,19 @@ if __name__ == '__main__':
     ann = data_dict['ann'].to_numpy().flatten()
     del data_dict # Remove to free memory
     
-    with open('CNN/cnn_hyperparams.yaml', 'r') as f:
+    with open('LSTM/lstm_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
     
     model = training_loop(imu, ann, hyperparams)
-    save_model(model,"./cnn.model")
+    save_model(model,"./lstm.model")
     
 
-    # model = load_model('./cnn.model',CNNModel(num_classes=hyperparams['num_classes'], window_size=hyperparams['window_size']))
+    # model = load_model('./lstm.model', LSTMModel(num_classes=hyperparams['num_classes'], input_size=hyperparams['input_size'], 
+    #                 hidden_size=hyperparams['hidden_size'], num_layers=hyperparams['num_layers'],
+    #                 seq_length=hyperparams['batch_size']))
     
-    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
-    val_generator = DataLoader(CNNDataset(X_val, y_val, hyperparams['window_size']), batch_size=hyperparams['batch_size'],shuffle=False)
+    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
+    val_generator = DataLoader(LSTMDataset(X_val, y_val, hyperparams['input_size']), batch_size=hyperparams['batch_size'],shuffle=False)
     class_labels = evaluate(model,val_generator,plot=True)
 
     # result = np.asarray(labels)
