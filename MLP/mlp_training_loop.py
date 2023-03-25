@@ -97,7 +97,7 @@ def save_model(model, path):
 def load_model(path_to_saved_model, new_model):
     new_model.load_state_dict(torch.load(path_to_saved_model))
     new_model.eval()
-    return new_model
+    return new_model.to(device)
 
 if __name__ == '__main__':
     data_dict = read_all_data()
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
 
-    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes'])).to(device)
+    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
     
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
     train_generator = DataLoader(MLPDataset(X_train, y_train), batch_size=hyperparams['batch_size'])
