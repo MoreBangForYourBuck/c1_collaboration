@@ -110,7 +110,7 @@ if __name__ == '__main__':
     
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
-
+    print(torch.cuda.is_available())
     model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
     
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
