@@ -38,8 +38,6 @@ def training_loop(imu, ann, hyperparams:dict):
             
             optimizer.step()
             batch_train_loss_history.append(loss.item())
-        
-        print(sum(batch_train_loss_history) / len(batch_train_loss_history))
 
         batch_val_loss_history = []
         for (X, y) in tqdm(val_generator):
@@ -50,9 +48,14 @@ def training_loop(imu, ann, hyperparams:dict):
             loss = criterion(y_p, y)
             batch_val_loss_history.append(loss.item())
         
+        epoch_train_loss = sum(batch_train_loss_history) / len(batch_train_loss_history)
+        epoch_val_loss = sum(batch_val_loss_history) / len(batch_val_loss_history)
+        
+        print(f'Train loss: {epoch_train_loss:.4f}\nVal loss: {epoch_val_loss:.4f}')
+        
         # Append average loss across batches
-        train_loss_history.append(sum(batch_train_loss_history) / len(batch_train_loss_history))
-        val_loss_history.append(sum(batch_val_loss_history) / len(batch_val_loss_history))
+        train_loss_history.append(epoch_train_loss)
+        val_loss_history.append(epoch_val_loss)
         
         
     plt.figure()
