@@ -2,6 +2,7 @@ from typing import Dict
 import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import torch
 
 
 def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
@@ -75,3 +76,11 @@ def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:
             scaler = MinMaxScaler()
             scaler.fit(df)
         return pd.DataFrame(scaler.transform(df), columns=df.columns), scaler
+
+def cross_entropy_weights(sample_vector):
+    '''Takes vector of amounts of samples, returns vector of weights'''
+    s = sum(sample_vector)
+    inverse_fraction = [s/c for c in sample_vector]
+    s = sum(inverse_fraction)
+    weights = [f/s for f in inverse_fraction]
+    return torch.tensor(weights)
