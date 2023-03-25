@@ -77,10 +77,8 @@ def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:
             scaler.fit(df)
         return pd.DataFrame(scaler.transform(df), columns=df.columns), scaler
 
-def cross_entropy_weights(sample_vector):
-    '''Takes vector of amounts of samples, returns vector of weights'''
-    s = sum(sample_vector)
-    inverse_fraction = [s/c for c in sample_vector]
+def cross_entropy_weights(percent_vector):
+    inverse_fraction = [1/c for c in percent_vector]
     s = sum(inverse_fraction)
     weights = [f/s for f in inverse_fraction]
     return torch.tensor(weights)
