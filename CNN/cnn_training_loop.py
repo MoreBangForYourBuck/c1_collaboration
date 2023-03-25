@@ -15,7 +15,8 @@ def training_loop(imu, ann, hyperparams:dict):
     model = CNNModel(num_classes=hyperparams['num_classes'], window_size=hyperparams['window_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
+    #weights from inverse of fractional amount of each class
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.0437158469945356,0.409836065573771,0.364298724888227,0.182149362477231])) # one-hot encoding taken care of by pytorch
 
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
     train_generator = DataLoader(CNNDataset(X_train, y_train, hyperparams['window_size']), batch_size=hyperparams['batch_size'], shuffle=False)
@@ -30,14 +31,16 @@ def training_loop(imu, ann, hyperparams:dict):
         for (X, y) in tqdm(train_generator):
             optimizer.zero_grad()
             model.train()
-            
             y_p = model(X)
-            loss = criterion(y_p, y)
 
+            loss = criterion(y_p,y)
             loss.backward()
+            
             optimizer.step()
             batch_train_loss_history.append(loss.item())
         
+        print(sum(batch_train_loss_history) / len(batch_train_loss_history))
+
         batch_val_loss_history = []
         for (X, y) in tqdm(val_generator):
             model.eval()
@@ -50,6 +53,7 @@ def training_loop(imu, ann, hyperparams:dict):
         # Append average loss across batches
         train_loss_history.append(sum(batch_train_loss_history) / len(batch_train_loss_history))
         val_loss_history.append(sum(batch_val_loss_history) / len(batch_val_loss_history))
+        
         
     plt.figure()
     plt.title('Loss curve')
@@ -111,9 +115,9 @@ if __name__ == '__main__':
 
     # model = load_model('./cnn.model',CNNModel(num_classes=hyperparams['num_classes'], window_size=hyperparams['window_size']))
     
-    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
-    val_generator = DataLoader(CNNDataset(X_val, y_val, hyperparams['window_size']), batch_size=hyperparams['batch_size'],shuffle=False)
-    class_labels = evaluate(model,val_generator,plot=True)
+    # X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
+    # val_generator = DataLoader(CNNDataset(X_val, y_val, hyperparams['window_size']), batch_size=hyperparams['batch_size'],shuffle=False)
+    # class_labels = evaluate(model,val_generator,plot=True)
 
     # result = np.asarray(labels)
     # np.savetxt("output_mlp.csv", result, delimiter=",")
