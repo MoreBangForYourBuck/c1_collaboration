@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from mlp_architecture import MLPDataset, MLPModel
+from lstm_architecture import LSTMDataset, LSTMModel
 from helpers.preprocessing import read_all_data
 import matplotlib.pyplot as plt
 import yaml
@@ -12,15 +12,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def training_loop(imu, ann, hyperparams:dict):
-    model = MLPModel(num_classes=hyperparams['num_classes'])
+
+    model = LSTMModel(num_classes=hyperparams['num_classes'], input_size=hyperparams['input_size'], 
+                    hidden_size=hyperparams['hidden_size'], num_layers=hyperparams['num_layers'],
+                    seq_length=hyperparams['batch_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.MSELoss() # one-hot encoding taken care of by pytorch
 
-    # Time series, but still shuffling because no window component
-    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=True, random_state=42)
-    train_generator = DataLoader(MLPDataset(X_train, y_train), batch_size=hyperparams['batch_size'])
-    val_generator = DataLoader(MLPDataset(X_val, y_val), batch_size=hyperparams['batch_size'])
+    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
+    train_generator = DataLoader(LSTMDataset(X_train, y_train, hyperparams['input_size']), batch_size=hyperparams['batch_size'], shuffle=False)
+    val_generator = DataLoader(LSTMDataset(X_val, y_val, hyperparams['input_size']), batch_size=hyperparams['batch_size'],shuffle=False)
 
     train_loss_history = []
     val_loss_history = []
@@ -61,7 +63,7 @@ def training_loop(imu, ann, hyperparams:dict):
     plt.legend()
     plt.show()
     return model
-
+    
 def labels_to_classes(labels):
     class_labels =[]
     for c in range(int(list(labels[0].shape)[0])):
@@ -97,23 +99,25 @@ def load_model(path_to_saved_model, new_model):
     new_model.eval()
     return new_model
 
-
 if __name__ == '__main__':
     data_dict = read_all_data()
     imu = data_dict['imu'].to_numpy()
     ann = data_dict['ann'].to_numpy().flatten()
     del data_dict # Remove to free memory
     
-    with open('MLP/mlp_hyperparams.yaml', 'r') as f:
+    with open('LSTM/lstm_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
     
-    # model = training_loop(imu, ann, hyperparams)
-    # save_model(model,"./mlp.model")
-
-    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
+    model = training_loop(imu, ann, hyperparams)
+    save_model(model,"./lstm.model")
     
-    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
-    val_generator = DataLoader(MLPDataset(X_val, y_val), batch_size=hyperparams['batch_size'])
+
+    # model = load_model('./lstm.model', LSTMModel(num_classes=hyperparams['num_classes'], input_size=hyperparams['input_size'], 
+    #                 hidden_size=hyperparams['hidden_size'], num_layers=hyperparams['num_layers'],
+    #                 seq_length=hyperparams['batch_size']))
+    
+    X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
+    val_generator = DataLoader(LSTMDataset(X_val, y_val, hyperparams['input_size']), batch_size=hyperparams['batch_size'],shuffle=False)
     class_labels = evaluate(model,val_generator,plot=True)
 
     # result = np.asarray(labels)
