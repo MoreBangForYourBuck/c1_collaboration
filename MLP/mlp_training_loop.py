@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from mlp_architecture import MLPDataset, MLPModel
-from helpers.preprocessing import read_all_data
+from helpers.preprocessing import read_all_data, cross_entropy_weights
 from helpers import eval
 import matplotlib.pyplot as plt
 import yaml
@@ -16,7 +16,7 @@ def training_loop(imu, ann, hyperparams:dict):
     model = MLPModel(num_classes=hyperparams['num_classes'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss() # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.CrossEntropyLoss(weight=(cross_entropy_weights([68.02,7.51,8.32,16.15])).to(device)) # one-hot encoding taken care of by pytorch
 
     # Time series, but still shuffling because no window component
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=True, random_state=42)
@@ -49,9 +49,14 @@ def training_loop(imu, ann, hyperparams:dict):
             loss = criterion(y_p, y)
             batch_val_loss_history.append(loss.item())
         
+        epoch_train_loss = sum(batch_train_loss_history) / len(batch_train_loss_history)
+        epoch_val_loss = sum(batch_val_loss_history) / len(batch_val_loss_history)
+        
+        print(f'Train loss: {epoch_train_loss:.4f}\nVal loss: {epoch_val_loss:.4f}')
+        
         # Append average loss across batches
-        train_loss_history.append(sum(batch_train_loss_history) / len(batch_train_loss_history))
-        val_loss_history.append(sum(batch_val_loss_history) / len(batch_val_loss_history))
+        train_loss_history.append(epoch_train_loss)
+        val_loss_history.append(epoch_val_loss)
         
     plt.figure()
     plt.title('Loss curve')
@@ -107,8 +112,8 @@ if __name__ == '__main__':
     with open('MLP/mlp_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
     
-    # model = training_loop(imu, ann, hyperparams)
-    # save_model(model,"./mlp.model")
+    model = training_loop(imu, ann, hyperparams)
+    save_model(model,"./mlp.model")
     print(torch.cuda.is_available())
     model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
     
