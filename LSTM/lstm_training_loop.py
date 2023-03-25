@@ -18,7 +18,7 @@ def training_loop(imu, ann, hyperparams:dict):
                     seq_length=hyperparams['batch_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.0437158469945356,0.409836065573771,0.364298724888227,0.182149362477231])) # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.044,0.41,0.364,0.182])) # one-hot encoding taken care of by pytorch
 
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
     train_generator = DataLoader(LSTMDataset(X_train, y_train, hyperparams['input_size']), batch_size=hyperparams['batch_size'], shuffle=False)
@@ -28,7 +28,7 @@ def training_loop(imu, ann, hyperparams:dict):
     val_loss_history = []
     for epoch in range(1, hyperparams['epochs'] + 1):
         print(f'Epoch {epoch}')
-        
+
         batch_train_loss_history = []
         for (X, y) in tqdm(train_generator):
             optimizer.zero_grad()
@@ -40,6 +40,8 @@ def training_loop(imu, ann, hyperparams:dict):
             loss.backward()
             optimizer.step()
             batch_train_loss_history.append(loss.item())
+
+        print(sum(batch_train_loss_history) / len(batch_train_loss_history))
         
         batch_val_loss_history = []
         for (X, y) in tqdm(val_generator):

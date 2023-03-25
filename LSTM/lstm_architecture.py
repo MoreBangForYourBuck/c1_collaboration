@@ -18,14 +18,17 @@ class LSTMModel(nn.Module):
         self.fc = nn.Linear(128, num_classes) #fully connected last layer
 
         self.relu = nn.ReLU()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
     def forward(self, x):
-        h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)) #hidden state
-        c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)) #internal state
+        h0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(device=self.device) #hidden state
+        c0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(device=self.device) #internal state
+        
         # Propagate input through LSTM
-        output, (hn, cn) = self.lstm(x, (h_0, c_0)) #lstm with input, hidden, and internal state
-        hn = hn.view(-1, self.hidden_size) #reshaping the data for Dense layer next
-        out = self.relu(hn)
+        output, (h, c) = self.lstm(x, (h0, c0)) #lstm with input, hidden, and internal state
+
+        out = h[-1].view(-1, self.hidden_size) #reshaping the data for Dense layer next
+        out = self.relu(out)
         out = self.fc_1(out) #first Dense
         out = self.relu(out) #relu
         out = self.fc(out) #Final Output
