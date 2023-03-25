@@ -2,11 +2,13 @@ import torch
 from torch.utils.data import DataLoader
 from mlp_architecture import MLPDataset, MLPModel
 from helpers.preprocessing import read_all_data
+from helpers import eval
 import matplotlib.pyplot as plt
 import yaml
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import numpy as np
+from typing import List
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -62,7 +64,7 @@ def training_loop(imu, ann, hyperparams:dict):
     plt.show()
     return model
 
-def labels_to_classes(labels):
+def labels_to_classes(labels) -> List[List[float]]:
     class_labels =[]
     for c in range(int(list(labels[0].shape)[0])):
         class_labels.append([float(labels[i][c]) for i in range(len(labels))])
@@ -97,7 +99,6 @@ def load_model(path_to_saved_model, new_model):
     new_model.eval()
     return new_model
 
-
 if __name__ == '__main__':
     data_dict = read_all_data()
     imu = data_dict['imu'].to_numpy()
@@ -110,11 +111,19 @@ if __name__ == '__main__':
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
 
-    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
+    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes'])).to(device)
     
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
+    train_generator = DataLoader(MLPDataset(X_train, y_train), batch_size=hyperparams['batch_size'])
     val_generator = DataLoader(MLPDataset(X_val, y_val), batch_size=hyperparams['batch_size'])
-    class_labels = evaluate(model,val_generator,plot=True)
+    # class_labels = evaluate(model,val_generator,plot=True)
+    
+    
+    train_acc = eval.eval_acc(model, train_generator)
+    val_acc = eval.eval_acc(model, val_generator)
+    
+    print(f'Train accuracy: {train_acc}%\nVal accuracy: {val_acc}%')
+    
 
     # result = np.asarray(labels)
     # np.savetxt("output_mlp.csv", result, delimiter=",")
