@@ -32,8 +32,8 @@ class CNNModel(nn.Module):
         #     nn.Linear(512, num_classes),
         #     nn.Softmax(dim=1)
         # )
-        self.conv1 = nn.Conv1d(6, 128, kernel_size=int(window_size/2), stride=1, padding=1)
-        self.dense1 = nn.Linear(128*(window_size - 2), 128)
+        self.conv1 = nn.Conv1d(6, 128, kernel_size=3, stride=1, padding=1)
+        self.dense1 = nn.Linear(128*window_size, 128)
         self.dense2 = nn.Linear(128, num_classes)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
