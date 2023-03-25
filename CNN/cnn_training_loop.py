@@ -16,7 +16,7 @@ def training_loop(imu, ann, hyperparams:dict):
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
     #weights from inverse of fractional amount of each class
-    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.0437158469945356,0.409836065573771,0.364298724888227,0.182149362477231])) # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.0437158469945356,0.409836065573771,0.364298724888227,0.182149362477231]).to(device)) # one-hot encoding taken care of by pytorch
 
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
     train_generator = DataLoader(CNNDataset(X_train, y_train, hyperparams['window_size']), batch_size=hyperparams['batch_size'], shuffle=False)
