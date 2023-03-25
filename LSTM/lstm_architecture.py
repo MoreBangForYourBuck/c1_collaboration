@@ -4,6 +4,8 @@ from torch.autograd import Variable
 
 
 class LSTMModel(nn.Module):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length):
         super(LSTMModel, self).__init__()
         self.num_classes = num_classes #number of classes
@@ -21,11 +23,10 @@ class LSTMModel(nn.Module):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
     def forward(self, x):
-        h0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(device=self.device) #hidden state
-        c0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(device=self.device) #internal state
-        
+        h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(LSTMModel.device) #hidden state
+        c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(LSTMModel.device) #internal state
         # Propagate input through LSTM
-        output, (h, c) = self.lstm(x, (h0, c0)) #lstm with input, hidden, and internal state
+        output, (h, c) = self.lstm(x, (h_0, c_0)) #lstm with input, hidden, and internal state
 
         out = h[-1].view(-1, self.hidden_size) #reshaping the data for Dense layer next
         out = self.relu(out)

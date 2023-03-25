@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import yaml
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-import numpy as np
 from typing import List
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
