@@ -11,9 +11,10 @@ from copy import deepcopy
 class TrainingLoop:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    def __init__(self, ModelArchitecture:torch.nn.Module, Dataset:torch.utils.data.Dataset, imu, ann, hyperparams):
+    def __init__(self, ModelArchitecture:torch.nn.Module, Dataset:torch.utils.data.Dataset, hyperparams):
         print(f'Using device: {TrainingLoop.device}')
         
+        # Set instance methods
         self.plot_loss = self._plot_loss
         self.save_model = self._save_model
         
@@ -21,20 +22,7 @@ class TrainingLoop:
         self.Dataset = Dataset
         self.model = ModelArchitecture(self.hyperparams).to(TrainingLoop.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hyperparams['learning_rate'])
-
-        weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(TrainingLoop.device) if \
-            self.hyperparams['weighted_loss'] else None
-        self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
-
-        self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(imu, ann,
-                                                                              test_size=self.hyperparams['val_size'],
-                                                                              shuffle=self.hyperparams['shuffle_split'],
-                                                                              random_state=42)
-        
-        if self.hyperparams['normalize']['run']:
-            self.X_train, scaler = normalize_data(self.X_train, method=self.hyperparams['normalize']['method'])
-            if scaler: # None if method is 'mean'
-                self.X_val = scaler.transform(self.X_val)
+        self.criterion = None # Set in training_loop()
         
         self.train_loss_history = []
         self.val_loss_history = []
@@ -45,13 +33,31 @@ class TrainingLoop:
     def dataloader(Dataset, X, y, hyperparams):
         return DataLoader(Dataset(X, y, hyperparams), batch_size=hyperparams['batch_size'])
 
-    def training_loop(self):
+    def training_loop(self, imu, ann):
         for epoch in range(1, self.hyperparams['epochs'] + 1):
             print(f'Epoch {epoch}')
             
-            train_generator = TrainingLoop.dataloader(self.Dataset, self.X_train, self.y_train, self.hyperparams)
-            val_generator = TrainingLoop.dataloader(self.Dataset, self.X_val, self.y_val, self.hyperparams)
+            # Split into train and validation sets
+            X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=self.hyperparams['val_size'],
+                                                              shuffle=self.hyperparams['shuffle_split'],
+                                                              random_state=42)
             
+            # Loss (optionally weighted)
+            weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(TrainingLoop.device) if \
+                self.hyperparams['weighted_loss'] else None
+            self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
+            
+            # Normalization (optionally)
+            if self.hyperparams['normalize']['run']:
+                X_train, scaler = normalize_data(X_train, method=self.hyperparams['normalize']['method'])
+                if scaler: # None if method is 'mean'
+                    X_val = scaler.transform(X_val)
+            
+            # Dataloaders
+            train_generator = TrainingLoop.dataloader(self.Dataset, X_train, y_train, self.hyperparams)
+            val_generator = TrainingLoop.dataloader(self.Dataset, X_val, y_val, self.hyperparams)
+            
+            # Batch train
             batch_train_loss_history = []
             for (X, y) in tqdm(train_generator):
                 self.optimizer.zero_grad()
@@ -64,6 +70,7 @@ class TrainingLoop:
                 self.optimizer.step()
                 batch_train_loss_history.append(loss.item())
             
+            # Batch validation
             batch_val_loss_history = []
             for (X, y) in tqdm(val_generator):
                 self.model.eval()
@@ -73,18 +80,19 @@ class TrainingLoop:
                 loss = self.criterion(y_p, y)
                 batch_val_loss_history.append(loss.item())
             
+            # Batch average loss
             epoch_train_loss = sum(batch_train_loss_history) / len(batch_train_loss_history)
             epoch_val_loss = sum(batch_val_loss_history) / len(batch_val_loss_history)
-            
             print(f'Train loss: {epoch_train_loss:.4f}\nVal loss: {epoch_val_loss:.4f}')
             
-            # Append average loss across batches
+            # Append batch loss to epoch loss list
             self.train_loss_history.append(epoch_train_loss)
             self.val_loss_history.append(epoch_val_loss)
-            
-            self.train_acc = TrainingLoop.eval_acc(self.model, train_generator)
-            self.val_acc = TrainingLoop.eval_acc(self.model, val_generator)
-            
+        
+        # Calculate accuracy
+        self.train_acc = TrainingLoop.eval_acc(self.model, train_generator)
+        self.val_acc = TrainingLoop.eval_acc(self.model, val_generator)
+  
         return self.model
 
     @staticmethod

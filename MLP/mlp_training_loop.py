@@ -14,8 +14,8 @@ if __name__ == '__main__':
     with open('MLP/mlp_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
         
-    training_loop = TrainingLoop(MLPModel, MLPDataset, imu, ann, hyperparams)
-    training_loop.training_loop()
+    training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams)
+    training_loop.training_loop(imu, ann)
     
     joblib.dump(training_loop, 'mlp_training_loop.joblib')
     

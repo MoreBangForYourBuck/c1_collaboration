@@ -14,8 +14,8 @@ if __name__ == '__main__':
     with open('CNN/cnn_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
         
-    training_loop = TrainingLoop(CNNModel, CNNDataset, imu, ann, hyperparams)
-    training_loop.training_loop()
+    training_loop = TrainingLoop(CNNModel, CNNDataset, hyperparams)
+    training_loop.training_loop(imu, ann)
     
     joblib.dump(training_loop, 'cnn_training_loop.joblib')
     
