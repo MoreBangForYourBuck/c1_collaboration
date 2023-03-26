@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union, Tuple, Optional
 import os
 import pandas as pd
 import numpy as np
@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import torch
 
 
-def expand_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, list]:
+def expand_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, List[Union[int, float]]]:
     class MemIter():
         def __init__(self, v:list):
             self.v = v
@@ -38,7 +38,7 @@ def expand_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str,
         'ann_time': imu_t
     }
     
-def nearest_neighbors_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, list]:
+def nearest_neighbors_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, List[Union[int, float]]]:
     ann_t_arr = np.array(ann_t)
     
     out = []
@@ -85,18 +85,25 @@ def get_distribution(all_y:List[float], num_classes:int=4) -> Dict[str, List[flo
         'fracs': [all_y.count(x)/len(all_y) for x in range(num_classes)]
     }
 
-def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:
-    if method == 'divide_mean':
-        for col in df:
-            df[col] = df[col] / df[col].mean()
+def normalize_data(arr:np.ndarray, method:str) -> Tuple[np.ndarray, Optional[Union[StandardScaler, MinMaxScaler]]]:
+    if method == 'mean':
+        # for col in df:
+        #     df[col] = df[col] / df[col].mean()
+        return (
+            np.mean(axis=0),
+            None
+        )
     else:
-        if method == 'standard_scale':
+        if method == 'standard':
             scaler = StandardScaler()
-            scaler.fit(df)
-        elif method == 'min_max_scale':
+            scaler.fit(arr)
+        elif method == 'minmax':
             scaler = MinMaxScaler()
-            scaler.fit(df)
-        return pd.DataFrame(scaler.transform(df), columns=df.columns), scaler
+            scaler.fit(arr)
+        return (
+            scaler.transform(arr),
+            scaler
+        )
 
 def cross_entropy_weights(percent_vector) -> torch.Tensor:
     inverse_fraction = [1/c for c in percent_vector]

@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from mlp_architecture import MLPDataset, MLPModel
-from helpers.preprocessing import read_all_data, cross_entropy_weights, get_distribution
+from helpers.preprocessing import read_all_data, cross_entropy_weights, get_distribution, normalize_data
 from helpers import eval
 import matplotlib.pyplot as plt
 import yaml
@@ -118,6 +118,11 @@ if __name__ == '__main__':
     model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
     
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
+    
+    # Scale on training set, then apply to validation set
+    X_train, scaler = normalize_data(X_train, method='standard')
+    X_val = scaler.fit(X_val)
+    
     train_generator = DataLoader(MLPDataset(X_train, y_train), batch_size=hyperparams['batch_size'])
     val_generator = DataLoader(MLPDataset(X_val, y_val), batch_size=hyperparams['batch_size'])
     # class_labels = evaluate(model,val_generator,plot=True)
