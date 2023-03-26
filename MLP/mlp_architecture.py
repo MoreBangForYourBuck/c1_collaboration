@@ -3,12 +3,12 @@ import torch
 
 
 class MLPModel(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, hyperparams:dict):
         super(MLPModel, self).__init__()
         self.fc1 = nn.Linear(6, 64)
         self.fc2 = nn.Linear(64, 128)
         self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, num_classes)
+        self.fc4 = nn.Linear(64, hyperparams['num_classes'])
         self.relu = nn.ReLU()
         self.output = nn.Softmax(dim=1)
         
@@ -26,7 +26,7 @@ class MLPModel(nn.Module):
 class MLPDataset(torch.utils.data.Dataset):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    def __init__(self, X, y):
+    def __init__(self, X, y, *args, **kwargs):
         self.X = torch.tensor(X, device=MLPDataset.device).float()
         self.y = torch.tensor(y, device=MLPDataset.device)
     

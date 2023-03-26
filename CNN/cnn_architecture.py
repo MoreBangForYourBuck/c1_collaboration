@@ -3,7 +3,7 @@ import torch
 
 
 class CNNModel(nn.Module):
-    def __init__(self, num_classes, window_size):
+    def __init__(self, hyperparams:dict):
         super(CNNModel, self).__init__()
         # self.network = nn.Sequential(
         #     nn.Conv1d(6, 32, kernel_size=3, stride=1, padding=1),
@@ -33,8 +33,8 @@ class CNNModel(nn.Module):
         #     nn.Softmax(dim=1)
         # )
         self.conv1 = nn.Conv1d(6, 128, kernel_size=3, stride=1, padding=1)
-        self.dense1 = nn.Linear(128*window_size, 128)
-        self.dense2 = nn.Linear(128, num_classes)
+        self.dense1 = nn.Linear(128*hyperparams['window_size'], 128)
+        self.dense2 = nn.Linear(128, hyperparams['num_classes'])
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
         
@@ -51,10 +51,10 @@ class CNNModel(nn.Module):
 class CNNDataset(torch.utils.data.Dataset):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    def __init__(self, X, y, window_size):
+    def __init__(self, X, y, hyperparams:dict):
         self.X = torch.tensor(X, device=CNNDataset.device).float()
         self.y = torch.tensor(y, device=CNNDataset.device)
-        self.window_size = window_size
+        self.window_size = hyperparams['window_size']
     
     def __len__(self):
         return len(self.X) - self.window_size
