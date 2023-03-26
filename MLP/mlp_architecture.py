@@ -5,21 +5,27 @@ import torch
 class MLPModel(nn.Module):
     def __init__(self, hyperparams:dict):
         super(MLPModel, self).__init__()
-        self.fc1 = nn.Linear(6, 64)
-        self.fc2 = nn.Linear(64, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, hyperparams['num_classes'])
-        self.relu = nn.ReLU()
+        hidden_layer_sizes = hyperparams['mlp']['hidden_layers']
+        
+        self.relu = nn.ReLU() # Activation function
+        self.input = nn.Linear(6, hidden_layer_sizes[0])
+        
+        self.hidden_layers = []
+        for i in enumerate(hidden_layer_sizes):
+            if i < len(hidden_layer_sizes) - 1:
+                self.hidden_layers.append(nn.Linear(hidden_layer_sizes[i], hidden_layer_sizes[i+1]))
+            else:
+                self.hidden_layers.append(nn.Linear(hidden_layer_sizes[i], hyperparams['num_classes']))
+        
         self.output = nn.Softmax(dim=1)
         
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        x = self.relu(x)
-        x = self.fc3(x)
-        x = self.relu(x)
-        x = self.fc4(x)
+        x = self.input(x)
+        
+        for hidden_layer in self.hidden_layers:
+            x = self.relu()
+            x = hidden_layer(x) # No relu at end because output is softmax
+
         return self.output(x)
 
 

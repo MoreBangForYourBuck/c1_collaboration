@@ -17,6 +17,8 @@ if __name__ == '__main__':
     training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams)
     training_loop.training_loop(imu, ann)
     
+    training_loop.plot_loss()
+    
     joblib.dump(training_loop, 'mlp_training_loop.joblib')
     
     # model = training_loop(imu, ann, hyperparams)

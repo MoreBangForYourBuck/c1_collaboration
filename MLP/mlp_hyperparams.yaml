@@ -8,3 +8,6 @@ shuffle_split: True # Boolean: whether to shuffle samples. NOT FOR TIMESERIES
 normalize:
   run: True # Boolean: bypasses method
   method: standard # String: minmax, standard, or mean
+
+mlp:
+  hidden_layers: [256, 512, 256]
