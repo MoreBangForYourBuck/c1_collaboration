@@ -17,9 +17,10 @@ if __name__ == '__main__':
     training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams)
     training_loop.training_loop(imu, ann)
     
+    print('Train accuracy: {0}%\nVal accuracy: {1}%'.format(training_loop.train_acc, training_loop.val_acc))
     training_loop.plot_loss()
     
-    joblib.dump(training_loop, 'mlp_training_loop.joblib')
+    joblib.dump(training_loop, 'mlp_training_loop_yes_weight_yes_norm_2.joblib')
     
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
