@@ -1,11 +1,12 @@
 from typing import Dict, List
 import os
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import torch
 
 
-def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
+def expand_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, list]:
     class MemIter():
         def __init__(self, v:list):
             self.v = v
@@ -22,7 +23,7 @@ def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
     mem_ann_t = MemIter(ann_t)
 
     ann_out = []
-    for i, curr_imu_time in enumerate(imu_t):
+    for curr_imu_time in imu_t:
         
         if curr_imu_time < mem_ann_t.val:
             ann_out.append(mem_ann.val)
@@ -34,6 +35,20 @@ def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
                 
     return {
         'ann': ann_out,
+        'ann_time': imu_t
+    }
+    
+def nearest_neighbors_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, list]:
+    ann_t_arr = np.array(ann_t)
+    
+    out = []
+    for x_t in imu_t:
+        diff = np.absolute(ann_t_arr - x_t)
+        index = diff.argmin()
+        out.append(ann[index])
+        
+    return {
+        'ann': out,
         'ann_time': imu_t
     }
 
