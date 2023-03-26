@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from lstm_architecture import LSTMDataset, LSTMModel
-from helpers.preprocessing import read_all_data, cross_entropy_weights
+from helpers.preprocessing import read_all_data, cross_entropy_weights, get_distribution
 import matplotlib.pyplot as plt
 import yaml
 from sklearn.model_selection import train_test_split
@@ -18,7 +18,7 @@ def training_loop(imu, ann, hyperparams:dict):
                     seq_length=hyperparams['batch_size'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss(weight=(cross_entropy_weights([68.02,7.51,8.32,16.15])).to(device)) # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.CrossEntropyLoss(weight=(cross_entropy_weights(get_distribution(ann.tolist())['fracs'])).to(device)) # one-hot encoding taken care of by pytorch
 
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, random_state=42)
     train_generator = DataLoader(LSTMDataset(X_train, y_train, hyperparams['input_size']), batch_size=hyperparams['batch_size'], shuffle=False)

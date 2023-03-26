@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from mlp_architecture import MLPDataset, MLPModel
-from helpers.preprocessing import read_all_data, cross_entropy_weights
+from helpers.preprocessing import read_all_data, cross_entropy_weights, get_distribution
 from helpers import eval
 import matplotlib.pyplot as plt
 import yaml
@@ -16,7 +16,7 @@ def training_loop(imu, ann, hyperparams:dict):
     model = MLPModel(num_classes=hyperparams['num_classes'])
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss(weight=(cross_entropy_weights([68.02,7.51,8.32,16.15])).to(device)) # one-hot encoding taken care of by pytorch
+    criterion = torch.nn.CrossEntropyLoss(weight=(cross_entropy_weights(get_distribution(ann.tolist())['fracs'])).to(device)) # one-hot encoding taken care of by pytorch
 
     # Time series, but still shuffling because no window component
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=True, random_state=42)

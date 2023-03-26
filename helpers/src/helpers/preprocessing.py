@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -62,6 +62,12 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
         'imu_t': imu_t.reset_index(drop=True),
         'ann': ann.reset_index(drop=True),
         'ann_t': ann_t.reset_index(drop=True)
+    }
+    
+def get_distribution(all_y:List[float], num_classes:int=4) -> Dict[str, List[float]]:
+    return {
+        'counts': [all_y.count(x) for x in range(num_classes)],
+        'fracs': [all_y.count(x)/len(all_y) for x in range(num_classes)]
     }
 
 def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:

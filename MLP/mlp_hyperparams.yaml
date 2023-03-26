@@ -1,4 +1,4 @@
 batch_size: 512
 epochs: 200
-learning_rate: 0.001 # Dont increase (weird shit happens)
+learning_rate: 0.01 # Dont increase (weird shit happens)
 num_classes: 4
