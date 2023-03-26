@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from typing import List
 from copy import deepcopy
+import numpy as np
 
 
 class TrainingLoop:
@@ -30,7 +31,7 @@ class TrainingLoop:
         self.train_acc = None
     
     @staticmethod
-    def dataloader(Dataset, X, y, hyperparams):
+    def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict) -> DataLoader:
         return DataLoader(Dataset(X, y, hyperparams), batch_size=hyperparams['batch_size'])
 
     def training_loop(self, imu, ann):
