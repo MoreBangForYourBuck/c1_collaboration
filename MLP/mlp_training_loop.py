@@ -112,9 +112,9 @@ if __name__ == '__main__':
     with open('MLP/mlp_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)
     
-    model = training_loop(imu, ann, hyperparams)
-    save_model(model,"./mlp.model")
-    print(torch.cuda.is_available())
+    # model = training_loop(imu, ann, hyperparams)
+    # save_model(model,"./mlp.model")
+    
     model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
     
     X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=0.2, shuffle=False, random_state=42)
@@ -123,10 +123,10 @@ if __name__ == '__main__':
     # class_labels = evaluate(model,val_generator,plot=True)
     
     
-    train_acc = eval.eval_acc(model, train_generator)
-    val_acc = eval.eval_acc(model, val_generator)
+    train_acc = eval.stats(model, train_generator,num_classes=hyperparams['num_classes'])
+    val_acc = eval.stats(model, val_generator,num_classes=hyperparams['num_classes'])
     
-    print(f'Train accuracy: {train_acc}%\nVal accuracy: {val_acc}%')
+    print(f'Precision, Recall, F1 - Train: {train_acc}%\nValidation: {val_acc}%')
     
 
     # result = np.asarray(labels)
