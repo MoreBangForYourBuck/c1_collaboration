@@ -17,15 +17,12 @@ if __name__ == '__main__':
     training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams)
     training_loop.training_loop(imu, ann)
     
-<<<<<<< HEAD
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
     
     model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
-=======
     print('Train accuracy: {0}%\nVal accuracy: {1}%'.format(training_loop.train_acc, training_loop.val_acc))
     training_loop.plot_loss()
->>>>>>> 0616c5ca586d952d68c5ba46a9fabe65bba87d65
     
     joblib.dump(training_loop, 'mlp_training_loop_yes_weight_yes_norm_2.joblib')
     
@@ -45,17 +42,14 @@ if __name__ == '__main__':
     # # class_labels = evaluate(model,val_generator,plot=True)
     
     
-<<<<<<< HEAD
     train_acc = eval.stats(model, train_generator,num_classes=hyperparams['num_classes'])
     val_acc = eval.stats(model, val_generator,num_classes=hyperparams['num_classes'])
     
     print(f'Precision, Recall, F1 - Train: {train_acc}%\nValidation: {val_acc}%')
-=======
     # train_acc = eval.eval_acc(model, train_generator)
     # val_acc = eval.eval_acc(model, val_generator)
     
     # print(f'Train accuracy: {train_acc}%\nVal accuracy: {val_acc}%')
->>>>>>> 0616c5ca586d952d68c5ba46a9fabe65bba87d65
     
 
     # result = np.asarray(labels)
