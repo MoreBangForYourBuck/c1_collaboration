@@ -1,11 +1,12 @@
-from typing import Dict
+from typing import Dict, List, Union, Tuple, Optional
 import os
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import torch
 
 
-def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
+def expand_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, List[Union[int, float]]]:
     class MemIter():
         def __init__(self, v:list):
             self.v = v
@@ -22,7 +23,7 @@ def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
     mem_ann_t = MemIter(ann_t)
 
     ann_out = []
-    for i, curr_imu_time in enumerate(imu_t):
+    for curr_imu_time in imu_t:
         
         if curr_imu_time < mem_ann_t.val:
             ann_out.append(mem_ann.val)
@@ -34,6 +35,20 @@ def expand_ann(imu_t:list, ann:list, ann_t:list) -> Dict[str, list]:
                 
     return {
         'ann': ann_out,
+        'ann_time': imu_t
+    }
+    
+def nearest_neighbors_ann(imu_t:List[float], ann:List[int], ann_t:List[float]) -> Dict[str, List[Union[int, float]]]:
+    ann_t_arr = np.array(ann_t)
+    
+    out = []
+    for x_t in imu_t:
+        diff = np.absolute(ann_t_arr - x_t)
+        index = diff.argmin()
+        out.append(ann[index])
+        
+    return {
+        'ann': out,
         'ann_time': imu_t
     }
 
@@ -63,19 +78,32 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
         'ann': ann.reset_index(drop=True),
         'ann_t': ann_t.reset_index(drop=True)
     }
+    
+def get_distribution(all_y:List[float], num_classes:int=4) -> Dict[str, List[float]]:
+    return {
+        'counts': [all_y.count(x) for x in range(num_classes)],
+        'fracs': [all_y.count(x)/len(all_y) for x in range(num_classes)]
+    }
 
-def normalize_data(df:pd.DataFrame, method:str) -> pd.DataFrame:
-    if method == 'divide_mean':
-        for col in df:
-            df[col] = df[col] / df[col].mean()
+def normalize_data(arr:np.ndarray, method:str) -> Tuple[np.ndarray, Optional[Union[StandardScaler, MinMaxScaler]]]:
+    if method == 'mean':
+        # for col in df:
+        #     df[col] = df[col] / df[col].mean()
+        return (
+            np.mean(axis=0),
+            None
+        )
     else:
-        if method == 'standard_scale':
+        if method == 'standard':
             scaler = StandardScaler()
-            scaler.fit(df)
-        elif method == 'min_max_scale':
+            scaler.fit(arr)
+        elif method == 'minmax':
             scaler = MinMaxScaler()
-            scaler.fit(df)
-        return pd.DataFrame(scaler.transform(df), columns=df.columns), scaler
+            scaler.fit(arr)
+        return (
+            scaler.transform(arr),
+            scaler
+        )
 
 def cross_entropy_weights(percent_vector) -> torch.Tensor:
     inverse_fraction = [1/c for c in percent_vector]

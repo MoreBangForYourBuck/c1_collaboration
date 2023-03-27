@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from helpers.preprocessing import read_all_data
 import torch
 from torch.nn import functional as F
-import pickle
+import joblib
 
 
 dtc = DecisionTreeClassifier()
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     y = F.one_hot(torch.tensor(y, dtype=torch.long), num_classes=4).detach().numpy()
     
     # Train, val, test split
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, shuffle=False)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True)
     # X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=0.5, shuffle=False)
     
     grid_search = GridSearchCV(dtc, params_dict, cv=5)
@@ -44,5 +44,5 @@ if __name__ == '__main__':
     # print(cross_val_score(tuned_dtc, X, y, cv=5))
     print('Val accuracy:', tuned_dtc.score(X_val, y_val))
 
-    filename = 'DECISION_TREE/dtc_model.sav'
-    pickle.dump(tuned_dtc, open(filename, 'wb'))
+    filename = 'DECISION_TREE/dtc_model.joblib'
+    joblib.dump(tuned_dtc, open(filename, 'wb'))
