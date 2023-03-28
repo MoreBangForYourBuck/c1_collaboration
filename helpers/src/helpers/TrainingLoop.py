@@ -25,6 +25,9 @@ class TrainingLoop:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hyperparams['learning_rate'])
         self.criterion = None # Set in training_loop()
         
+        self.train_generator = None
+        self.val_generator = None
+        
         self.train_loss_history = []
         self.val_loss_history = []
         self.val_acc = None
@@ -34,33 +37,33 @@ class TrainingLoop:
     def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict) -> DataLoader:
         return DataLoader(Dataset(X, y, hyperparams), batch_size=hyperparams['batch_size'])
 
-    def training_loop(self, imu, ann):
+    def training_loop(self, imu, ann):    
+        # Split into train and validation sets
+        X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=self.hyperparams['val_size'],
+                                                            shuffle=self.hyperparams['shuffle_split'],
+                                                            random_state=42)
+        
+        # Loss (optionally weighted)
+        weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(TrainingLoop.device) if \
+            self.hyperparams['weighted_loss'] else None
+        self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
+        
+        # Normalization (optionally)
+        if self.hyperparams['normalize']['run']:
+            X_train, scaler = normalize_data(X_train, method=self.hyperparams['normalize']['method'])
+            if scaler: # None if method is 'mean'
+                X_val = scaler.transform(X_val)
+                
+        # Dataloaders
+        self.train_generator = TrainingLoop.dataloader(self.Dataset, X_train, y_train, self.hyperparams)
+        self.val_generator = TrainingLoop.dataloader(self.Dataset, X_val, y_val, self.hyperparams)
+                
         for epoch in range(1, self.hyperparams['epochs'] + 1):
             print(f'Epoch {epoch}')
             
-            # Split into train and validation sets
-            X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=self.hyperparams['val_size'],
-                                                              shuffle=self.hyperparams['shuffle_split'],
-                                                              random_state=42)
-            
-            # Loss (optionally weighted)
-            weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(TrainingLoop.device) if \
-                self.hyperparams['weighted_loss'] else None
-            self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
-            
-            # Normalization (optionally)
-            if self.hyperparams['normalize']['run']:
-                X_train, scaler = normalize_data(X_train, method=self.hyperparams['normalize']['method'])
-                if scaler: # None if method is 'mean'
-                    X_val = scaler.transform(X_val)
-            
-            # Dataloaders
-            train_generator = TrainingLoop.dataloader(self.Dataset, X_train, y_train, self.hyperparams)
-            val_generator = TrainingLoop.dataloader(self.Dataset, X_val, y_val, self.hyperparams)
-            
             # Batch train
             batch_train_loss_history = []
-            for (X, y) in tqdm(train_generator):
+            for (X, y) in tqdm(self.train_generator):
                 self.optimizer.zero_grad()
                 self.model.train()
                 
@@ -73,7 +76,7 @@ class TrainingLoop:
             
             # Batch validation
             batch_val_loss_history = []
-            for (X, y) in tqdm(val_generator):
+            for (X, y) in tqdm(self.val_generator):
                 self.model.eval()
                 with torch.no_grad():
                     y_p = self.model(X)
@@ -91,8 +94,8 @@ class TrainingLoop:
             self.val_loss_history.append(epoch_val_loss)
         
         # Calculate accuracy
-        self.train_acc = TrainingLoop.eval_acc(self.model, train_generator)
-        self.val_acc = TrainingLoop.eval_acc(self.model, val_generator)
+        self.train_acc = TrainingLoop.eval_acc(self.model, self.train_generator)
+        self.val_acc = TrainingLoop.eval_acc(self.model, self.val_generator)
   
         return self.model
 
@@ -132,3 +135,30 @@ class TrainingLoop:
                 sum += torch.sum(y == y_p).item()
                 length += len(y_p)
         return sum/length
+
+    def eval_precision(self, dataloader:torch.utils.data.DataLoader) -> float:
+        sum = 0
+        length = 0
+        for (X, y) in tqdm(dataloader):
+            self.model.eval()
+            with torch.no_grad():
+                y_p = TrainingLoop.model_output_to_classes(self.model(X))
+                sum += torch.sum(y_p[y == 1] == 1).item()
+                length += torch.sum(y == 1).item()
+        return sum/length
+    
+    def eval_recall(self, dataloader:torch.utils.data.DataLoader) -> float:
+        sum = 0
+        length = 0
+        for (X, y) in tqdm(dataloader):
+            self.model.eval()
+            with torch.no_grad():
+                y_p = TrainingLoop.model_output_to_classes(self.model(X))
+                sum += torch.sum(y_p[y == 1] == 1).item()
+                length += torch.sum(y_p == 1).item()
+        return sum/length
+    
+    def eval_f1(self, dataloader:torch.utils.data.DataLoader) -> float:
+        precision = self.eval_precision(dataloader)
+        recall = self.eval_recall(dataloader)
+        return 2 * (precision * recall) / (precision + recall)

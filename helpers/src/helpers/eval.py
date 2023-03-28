@@ -8,7 +8,7 @@ def model_output_to_classes(model_output:torch.Tensor) -> torch.Tensor:
     return torch.max(model_output, 1)[1] # Indices of max values
 
 
-def stats(model:nn.Module, dataloader:torch.utils.data.DataLoader,num_classes) -> float:
+def stats(model:nn.Module, dataloader:torch.utils.data.DataLoader,num_classes, device) -> float:
     precisions = []
     recalls = []
     f_ones = []
@@ -17,8 +17,13 @@ def stats(model:nn.Module, dataloader:torch.utils.data.DataLoader,num_classes) -
     f_one = tm.F1Score(task="multiclass", num_classes=num_classes)
 
     for (X, y) in tqdm(dataloader):
+        model.to('cpu')
+        X = X.to('cpu')
+        y = y.to('cpu')
         model.eval()
         with torch.no_grad():
+            # X = X.to(device)
+            # y = y.to(device)
             y_p = model_output_to_classes(model(X))
 
             recalls.append((recall(y_p,y)).item())

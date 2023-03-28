@@ -20,11 +20,11 @@ if __name__ == '__main__':
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
     
-    model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
-    print('Train accuracy: {0}%\nVal accuracy: {1}%'.format(training_loop.train_acc, training_loop.val_acc))
+    # model = load_model('./mlp.model',MLPModel(num_classes=hyperparams['num_classes']))
+    # print('Train accuracy: {0}%\nVal accuracy: {1}%'.format(training_loop.train_acc, training_loop.val_acc))
     training_loop.plot_loss()
     
-    joblib.dump(training_loop, 'mlp_training_loop_yes_weight_yes_norm_2.joblib')
+    joblib.dump(training_loop, 'mlp_training_loop_no_weight_yes_norm_3.joblib')
     
     # model = training_loop(imu, ann, hyperparams)
     # save_model(model,"./mlp.model")
