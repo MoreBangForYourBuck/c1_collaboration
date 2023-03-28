@@ -16,8 +16,5 @@ if __name__ == '__main__':
         
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams, imu, ann, device, '/home/jacob/ece542_repos/c1_collaboration/c2_final_models/tuned2')
+    training_loop = TrainingLoop(MLPModel, MLPDataset, hyperparams, imu, ann, device, '/home/jacob/ece542_repos/c1_collaboration/c2_final_models/tuned3')
     training_loop.training_loop()
-    
-    
-    
