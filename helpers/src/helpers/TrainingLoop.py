@@ -7,13 +7,16 @@ from tqdm import tqdm
 from typing import List
 from copy import deepcopy
 import numpy as np
+import yaml
+import joblib
 
 
 class TrainingLoop:
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    def __init__(self, ModelArchitecture:torch.nn.Module, Dataset:torch.utils.data.Dataset, hyperparams):
-        print(f'Using device: {TrainingLoop.device}')
+    def __init__(self, ModelArchitecture:torch.nn.Module, Dataset:torch.utils.data.Dataset, hyperparams:dict,
+                 imu:np.ndarray, ann:np.ndarray, device, model_name:str):
+        print(f'Using device: {device}')
+        
+        self.model_name = model_name
         
         # Set instance methods
         self.plot_loss = self._plot_loss
@@ -21,7 +24,7 @@ class TrainingLoop:
         
         self.hyperparams = deepcopy(hyperparams)
         self.Dataset = Dataset
-        self.model = ModelArchitecture(self.hyperparams).to(TrainingLoop.device)
+        self.model = ModelArchitecture(self.hyperparams).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hyperparams['learning_rate'])
         self.criterion = None # Set in training_loop()
         
@@ -32,32 +35,32 @@ class TrainingLoop:
         self.val_loss_history = []
         self.val_acc = None
         self.train_acc = None
-    
-    @staticmethod
-    def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict) -> DataLoader:
-        return DataLoader(Dataset(X, y, hyperparams), batch_size=hyperparams['batch_size'])
-
-    def training_loop(self, imu, ann):    
+        
         # Split into train and validation sets
         X_train, X_val, y_train, y_val = train_test_split(imu, ann, test_size=self.hyperparams['val_size'],
-                                                            shuffle=self.hyperparams['shuffle_split'],
-                                                            random_state=42)
+                                                          shuffle=self.hyperparams['shuffle_split'],
+                                                          random_state=42)
         
         # Loss (optionally weighted)
-        weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(TrainingLoop.device) if \
+        weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(device) if \
             self.hyperparams['weighted_loss'] else None
         self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
         
         # Normalization (optionally)
         if self.hyperparams['normalize']['run']:
-            X_train, scaler = normalize_data(X_train, method=self.hyperparams['normalize']['method'])
-            if scaler: # None if method is 'mean'
-                X_val = scaler.transform(X_val)
+            X_train, self.scaler = normalize_data(X_train, method=self.hyperparams['normalize']['method'])
+            if self.scaler: # None if method is 'mean'
+                X_val = self.scaler.transform(X_val)
                 
         # Dataloaders
-        self.train_generator = TrainingLoop.dataloader(self.Dataset, X_train, y_train, self.hyperparams)
-        self.val_generator = TrainingLoop.dataloader(self.Dataset, X_val, y_val, self.hyperparams)
-                
+        self.train_generator = TrainingLoop.dataloader(self.Dataset, X_train, y_train, self.hyperparams, device)
+        self.val_generator = TrainingLoop.dataloader(self.Dataset, X_val, y_val, self.hyperparams, device)
+    
+    @staticmethod
+    def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict, device) -> DataLoader:
+        return DataLoader(Dataset(X, y, device, hyperparams), batch_size=hyperparams['batch_size'])
+
+    def training_loop(self):    
         for epoch in range(1, self.hyperparams['epochs'] + 1):
             print(f'Epoch {epoch}')
             
@@ -96,11 +99,17 @@ class TrainingLoop:
         # Calculate accuracy
         self.train_acc = TrainingLoop.eval_acc(self.model, self.train_generator)
         self.val_acc = TrainingLoop.eval_acc(self.model, self.val_generator)
+        
+        self.save_model(f'{self.model_name}.torch')
+        self.save_hyperparams(f'{self.model_name}.yaml')
+        if self.scaler:
+            joblib.dump(self.scaler, f'{self.model_name}_scaler.joblib')
+        self.plot_loss()
   
         return self.model
 
     @staticmethod
-    def plot_loss(train_loss_history:List[float], val_loss_history:List[float], hyperparams:dict) -> None:
+    def plot_loss(train_loss_history:List[float], val_loss_history:List[float], hyperparams:dict, save_name:str) -> None:
         plt.figure()
         plt.title('Loss curve')
         plt.plot(range(hyperparams['epochs']), train_loss_history, label='train loss')
@@ -108,10 +117,11 @@ class TrainingLoop:
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend()
+        plt.savefig(save_name)
         plt.show()
         
     def _plot_loss(self) -> None:
-        TrainingLoop.plot_loss(self.train_loss_history, self.val_loss_history, self.hyperparams)
+        TrainingLoop.plot_loss(self.train_loss_history, self.val_loss_history, self.hyperparams, f'{self.model_name}.png')
 
     @staticmethod
     def save_model(model, path:str) -> None:
@@ -119,6 +129,10 @@ class TrainingLoop:
         
     def _save_model(self, path:str) -> None:
         TrainingLoop.save_model(self.model, path)
+        
+    def save_hyperparams(self, path:str) -> None:
+        with open(path, 'w') as f:
+            yaml.dump(self.hyperparams, f)
     
     @staticmethod
     def model_output_to_classes(model_output:torch.Tensor) -> torch.Tensor:
@@ -135,30 +149,3 @@ class TrainingLoop:
                 sum += torch.sum(y == y_p).item()
                 length += len(y_p)
         return sum/length
-
-    def eval_precision(self, dataloader:torch.utils.data.DataLoader) -> float:
-        sum = 0
-        length = 0
-        for (X, y) in tqdm(dataloader):
-            self.model.eval()
-            with torch.no_grad():
-                y_p = TrainingLoop.model_output_to_classes(self.model(X))
-                sum += torch.sum(y_p[y == 1] == 1).item()
-                length += torch.sum(y == 1).item()
-        return sum/length
-    
-    def eval_recall(self, dataloader:torch.utils.data.DataLoader) -> float:
-        sum = 0
-        length = 0
-        for (X, y) in tqdm(dataloader):
-            self.model.eval()
-            with torch.no_grad():
-                y_p = TrainingLoop.model_output_to_classes(self.model(X))
-                sum += torch.sum(y_p[y == 1] == 1).item()
-                length += torch.sum(y_p == 1).item()
-        return sum/length
-    
-    def eval_f1(self, dataloader:torch.utils.data.DataLoader) -> float:
-        precision = self.eval_precision(dataloader)
-        recall = self.eval_recall(dataloader)
-        return 2 * (precision * recall) / (precision + recall)

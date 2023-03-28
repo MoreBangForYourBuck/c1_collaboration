@@ -1,0 +1,15 @@
+batch_size: 512
+epochs: 50
+learning_rate: 0.01
+mlp:
+  hidden_layers:
+  - 256
+  - 512
+  - 256
+normalize:
+  method: standard
+  run: true
+num_classes: 4
+shuffle_split: true
+val_size: 0.2
+weighted_loss: false
