@@ -16,7 +16,7 @@ def labels_to_classes(labels):
 
 def evaluate(model,dataloader,plot=True):
     model_output = []
-    for (X, y) in tqdm(dataloader):
+    for i, (X, y) in enumerate(tqdm(dataloader)):
         model.eval()
         with torch.no_grad():
             y_p = model(X)
@@ -27,9 +27,31 @@ def evaluate(model,dataloader,plot=True):
         plt.figure()
         plt.title('Evaluation - Labels')
         for i,c in enumerate(classes):
-            plt.plot(range(len(c)), c, '.',label=str(i) +' Labels')
+            plt.plot(range(len(c)), c, '.',label=str(i) +' Labels', alpha=0.5, markersize=5)
         plt.xlabel('Time')
         plt.ylabel('Label')
+        plt.legend()
+        plt.show()
+
+    return classes
+
+def evaluate_first_batch(model,dataloader,plot=True):
+    model_output = []
+    for (X, y) in dataloader:
+        model.eval()
+        with torch.no_grad():
+            y_p = model(X)
+        model_output.extend(y_p)
+        break
+    classes = labels_to_classes(model_output)
+
+    if plot:
+        plt.figure()
+        plt.title('Evaluation - Labels')
+        for i,c in enumerate(classes):
+            plt.plot(range(len(c)), c, '.',label=str(i) +' Labels', alpha=0.5, markersize=5)
+        plt.xlabel('Time')
+        plt.ylabel('Label Confidence')
         plt.legend()
         plt.show()
 

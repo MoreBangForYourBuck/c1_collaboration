@@ -26,7 +26,6 @@ class TrainingLoop:
         self.Dataset = Dataset
         self.model = ModelArchitecture(self.hyperparams).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.hyperparams['learning_rate'])
-        self.criterion = None # Set in training_loop()
         
         self.train_generator = None
         self.val_generator = None
@@ -59,6 +58,12 @@ class TrainingLoop:
     @staticmethod
     def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict, device) -> DataLoader:
         return DataLoader(Dataset(X, y, device, hyperparams), batch_size=hyperparams['batch_size'])
+    
+    def eval_loop(self, model):
+        train_acc = TrainingLoop.eval_acc(model, self.train_generator)
+        val_acc = TrainingLoop.eval_acc(model, self.val_generator)
+        return train_acc, val_acc
+        
 
     def training_loop(self):    
         for epoch in range(1, self.hyperparams['epochs'] + 1):
@@ -76,6 +81,8 @@ class TrainingLoop:
                 loss.backward()
                 self.optimizer.step()
                 batch_train_loss_history.append(loss.item())
+                # if len(batch_train_loss_history) % 1000 == 0:
+                #     print(f'Batch {len(batch_train_loss_history)} loss: {loss.item():.4f}')
             
             # Batch validation
             batch_val_loss_history = []
@@ -92,20 +99,25 @@ class TrainingLoop:
             epoch_val_loss = sum(batch_val_loss_history) / len(batch_val_loss_history)
             print(f'Train loss: {epoch_train_loss:.4f}\nVal loss: {epoch_val_loss:.4f}')
             
+            self.save_model(f'{self.model_name}_epoch{epoch}.torch')
+            if epoch == 1:
+                self.save_hyperparams(f'{self.model_name}.yaml')
+                if self.hyperparams['normalize']['run']:
+                    joblib.dump(self.scaler, f'{self.model_name}_scaler.joblib')
+                
             # Append batch loss to epoch loss list
             self.train_loss_history.append(epoch_train_loss)
             self.val_loss_history.append(epoch_val_loss)
+            
+            joblib.dump(self.train_loss_history, f'{self.model_name}_train_loss_hist.joblib')
+            joblib.dump(self.val_loss_history, f'{self.model_name}_val_loss_hist.joblib')
+        
+        self.plot_loss()
         
         # Calculate accuracy
         self.train_acc = TrainingLoop.eval_acc(self.model, self.train_generator)
         self.val_acc = TrainingLoop.eval_acc(self.model, self.val_generator)
-        
-        self.save_model(f'{self.model_name}.torch')
-        self.save_hyperparams(f'{self.model_name}.yaml')
-        if self.scaler:
-            joblib.dump(self.scaler, f'{self.model_name}_scaler.joblib')
-        self.plot_loss()
-  
+          
         return self.model
 
     @staticmethod
@@ -140,12 +152,14 @@ class TrainingLoop:
 
     @staticmethod
     def eval_acc(model:torch.nn.Module, dataloader:torch.utils.data.DataLoader) -> float:
-        sum = 0
+        sumy = 0
         length = 0
         for (X, y) in tqdm(dataloader):
             model.eval()
             with torch.no_grad():
                 y_p = TrainingLoop.model_output_to_classes(model(X))
-                sum += torch.sum(y == y_p).item()
+                sumy += torch.sum(y == y_p).item()
                 length += len(y_p)
-        return sum/length
+        print('yp', torch.sum(y_p))
+        print(torch.sum(y))
+        return sumy/length

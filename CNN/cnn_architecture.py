@@ -1,64 +1,100 @@
 from torch import nn
 import torch
+from torch import functional as F
 
 
-class CNNModel(nn.Module):
+class CNN(nn.Module):
     def __init__(self, hyperparams:dict):
-        super(CNNModel, self).__init__()
-        # self.network = nn.Sequential(
-        #     nn.Conv1d(6, 32, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.MaxPool1d(1), # output: 64 x 125
-
-        #     nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.Conv1d(128, 128, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.MaxPool1d(2), # output: 128 x 62
-
-        #     nn.Conv1d(128, 256, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.MaxPool1d(2), # output: 256 x 31
-
-        #     nn.Flatten(), 
-        #     nn.Linear(256*31, 1024),
-        #     nn.ReLU(),
-        #     nn.Linear(1024, 512),
-        #     nn.ReLU(),
-        #     nn.Linear(512, num_classes),
-        #     nn.Softmax(dim=1)
-        # )
-        self.conv1 = nn.Conv1d(6, 128, kernel_size=3, stride=1, padding=1)
-        self.dense1 = nn.Linear(128*hyperparams['window_size'], 128)
-        self.dense2 = nn.Linear(128, hyperparams['num_classes'])
-        self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=1)
+        super(CNN, self).__init__()
+        self.relu = nn.ReLU() # Activation
         
+        self.conv1 = nn.Conv1d(in_channels=6, out_channels=16, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
+                               padding='same')
+        self.avgpool1 = nn.AvgPool1d(kernel_size=2, stride=2)
+        self.bn1 = nn.BatchNorm1d(16)
+        self.dropout1 = nn.Dropout(0.2)
+        
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
+                               padding='same')
+        self.avgpool2 = nn.AvgPool1d(kernel_size=2, stride=2)
+        self.bn2 = nn.BatchNorm1d(32)
+        self.dropout2 = nn.Dropout(0.2)
+        
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=32, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
+                               padding='same')
+        self.upsample1 = nn.Upsample(scale_factor=2, mode='linear', align_corners=True)
+        self.bn3 = nn.BatchNorm1d(32)
+        self.dropout3 = nn.Dropout(0.2)
+        
+        self.conv4 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
+                               padding='same')
+        self.upsample2 = nn.Upsample(scale_factor=2, mode='linear', align_corners=True)
+        self.bn4 = nn.BatchNorm1d(16)
+        self.dropout4 = nn.Dropout(0.2)
+        
+        self.conv5 = nn.Conv1d(in_channels=16, out_channels=4, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
+                               padding='same')
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(4*hyperparams['cnn']['window_size'], 4)
+        self.softmax = nn.Softmax(dim=1)
+    
     def forward(self, x):
         x = self.conv1(x)
         x = self.relu(x)
-        x = x.view(x.size(0), -1) # flatten the output of the convolutional layer
-        x = self.dense1(x)
+        x = self.avgpool1(x)
+        x = self.bn1(x)
+        x = self.dropout1(x)
+        
+        x = self.conv2(x)
         x = self.relu(x)
-        x = self.dense2(x)
-        return self.softmax(x)
-
+        x = self.avgpool2(x)
+        x = self.bn2(x)
+        x = self.dropout2(x)
+        
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.upsample1(x)
+        x = self.bn3(x)
+        x = self.dropout3(x)
+        
+        x = self.conv4(x)
+        x = self.relu(x)
+        x = self.upsample2(x)
+        x = self.bn4(x)
+        x = self.dropout4(x)
+        
+        x = self.conv5(x)
+        x = self.relu(x)
+        
+        x = self.flatten(x)
+        x = self.fc(x)
+        
+        x = self.softmax(x)
+        return x
 
 class CNNDataset(torch.utils.data.Dataset):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    def __init__(self, X, y, hyperparams:dict):
-        self.X = torch.tensor(X, device=CNNDataset.device).float()
-        self.y = torch.tensor(y, device=CNNDataset.device)
-        self.window_size = hyperparams['window_size']
+    def __init__(self, X, y, device, hyperparams:dict):
+        self.device = device
+        self.window_size = hyperparams['cnn']['window_size']
+        self.len = len(X) - self.window_size
+        self.X = X # Transpose for conv imput to yield shape (batch_size, in_channels, input_size)
+        self.y = y
     
     def __len__(self):
-        return len(self.X) - self.window_size
+        return self.len
     
     def __getitem__(self, idx):
-        # self.X[idx:idx+self.window_size].unsqueeze(0).T,
-        return self.X[idx:idx+self.window_size].T, self.y[idx+self.window_size]
+        return (
+            torch.tensor(self.X[idx:idx+self.window_size], device=self.device).float().T, #.float maybe?
+            torch.tensor(self.y[idx+self.window_size], device=self.device)
+        )
+
+if __name__ == '__main__':
+    hyperparams = {
+        'cnn': {
+            'kernel_size': 12,
+        }
+    }
+    model = CNN(hyperparams)
+    print(model)

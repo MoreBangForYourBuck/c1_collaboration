@@ -1,0 +1,13 @@
+batch_size: 40
+cnn:
+  kernel_size: 12
+  window_size: 60
+epochs: 20
+learning_rate: 0.001
+normalize:
+  method: standard
+  run: false
+num_classes: 4
+shuffle_split: false
+val_size: 0.2
+weighted_loss: true
