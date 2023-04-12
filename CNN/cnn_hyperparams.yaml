@@ -1,6 +1,6 @@
-batch_size: 20
+batch_size: 40
 epochs: 20
-learning_rate: 0.1
+learning_rate: 0.001
 num_classes: 4
 weighted_loss: True # Boolean
 val_size: 0.2 # Float: Size of validation in train/val split
