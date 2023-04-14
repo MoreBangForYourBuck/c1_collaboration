@@ -9,12 +9,15 @@ from copy import deepcopy
 import numpy as np
 import yaml
 import joblib
+import torchmetrics as tm
 
 
 class TrainingLoop:
     def __init__(self, ModelArchitecture:torch.nn.Module, Dataset:torch.utils.data.Dataset, hyperparams:dict,
                  imu:np.ndarray, ann:np.ndarray, device, model_name:str):
         print(f'Using device: {device}')
+        
+        self.device = device
         
         self.model_name = model_name
         
@@ -41,8 +44,10 @@ class TrainingLoop:
                                                           random_state=42)
         
         # Loss (optionally weighted)
-        weight = cross_entropy_weights(get_distribution(ann.tolist())['fracs']).to(device) if \
-            self.hyperparams['weighted_loss'] else None
+        print(get_distribution(ann.tolist(), num_classes=hyperparams['num_classes']))
+        weight = cross_entropy_weights(get_distribution(
+            ann.tolist(), num_classes=hyperparams['num_classes'])['fracs']).to(device) \
+                if self.hyperparams['weighted_loss'] else None
         self.criterion = torch.nn.CrossEntropyLoss(weight=weight) # one-hot encoding taken care of by pytorch
         
         # Normalization (optionally)
@@ -58,12 +63,6 @@ class TrainingLoop:
     @staticmethod
     def dataloader(Dataset:torch.utils.data.Dataset, X:np.ndarray, y:np.ndarray, hyperparams:dict, device) -> DataLoader:
         return DataLoader(Dataset(X, y, device, hyperparams), batch_size=hyperparams['batch_size'])
-    
-    def eval_loop(self, model):
-        train_acc = TrainingLoop.eval_acc(model, self.train_generator)
-        val_acc = TrainingLoop.eval_acc(model, self.val_generator)
-        return train_acc, val_acc
-        
 
     def training_loop(self):    
         for epoch in range(1, self.hyperparams['epochs'] + 1):
@@ -86,6 +85,10 @@ class TrainingLoop:
             
             # Batch validation
             batch_val_loss_history = []
+            val_precision = []
+            val_recall = []
+            val_f1 = []
+            val_acc = []
             for (X, y) in tqdm(self.val_generator):
                 self.model.eval()
                 with torch.no_grad():
@@ -93,6 +96,12 @@ class TrainingLoop:
                 
                 loss = self.criterion(y_p, y)
                 batch_val_loss_history.append(loss.item())
+                
+                stats = TrainingLoop.stats(y_p, y, self.hyperparams['num_classes'], device=self.device)
+                val_precision.append(stats['precision'])
+                val_recall.append(stats['recall'])
+                val_f1.append(stats['f1'])
+                val_acc.append(stats['accuracy'])
             
             # Batch average loss
             epoch_train_loss = sum(batch_train_loss_history) / len(batch_train_loss_history)
@@ -111,7 +120,12 @@ class TrainingLoop:
             
             joblib.dump(self.train_loss_history, f'{self.model_name}_train_loss_hist.joblib')
             joblib.dump(self.val_loss_history, f'{self.model_name}_val_loss_hist.joblib')
-        
+            
+            print(f'Val precision: {sum(val_precision) / len(val_precision):.4f}')
+            print(f'Val recall: {sum(val_recall) / len(val_recall):.4f}')
+            print(f'Val f1: {sum(val_f1) / len(val_f1):.4f}')
+            print(f'Val acc: {sum(val_acc) / len(val_acc):.4f}')
+            
         self.plot_loss()
         
         # Calculate accuracy
@@ -119,6 +133,22 @@ class TrainingLoop:
         self.val_acc = TrainingLoop.eval_acc(self.model, self.val_generator)
           
         return self.model
+    
+    @staticmethod
+    def stats(y_p:torch.Tensor, y:torch.Tensor, num_classes:int, device) -> dict:
+        precision = tm.Precision(task='multiclass', average='macro', num_classes=num_classes).to(device)
+        recall = tm.Recall(task='multiclass', average='macro', num_classes=num_classes).to(device)
+        f_one = tm.F1Score(task='multiclass', average='macro', num_classes=num_classes).to(device)
+        acc = torch.sum(y == TrainingLoop.model_output_to_classes(y_p)).item() / len(y)
+        
+        
+        return {
+            'precision': precision(y_p, y).item(),
+            'recall': recall(y_p, y).item(),
+            'f1': f_one(y_p, y).item(),
+            'accuracy': acc
+        }
+        
 
     @staticmethod
     def plot_loss(train_loss_history:List[float], val_loss_history:List[float], hyperparams:dict, save_name:str) -> None:

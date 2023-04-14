@@ -1,13 +1,13 @@
-batch_size: 512 # Int
-epochs: 20 # Int
+batch_size: 10 # Int
+epochs: 200 # Int
 learning_rate: 0.001 # Float
-num_classes: 4 # Int
+num_classes: 2 # Int
 weighted_loss: True # Boolean
 val_size: 0.2 # Float: Size of validation in train/val split
 shuffle_split: True # Boolean: whether to shuffle samples. NOT FOR TIMESERIES
 normalize:
-  run: True # Boolean: bypasses method
+  run: False # Boolean: bypasses method
   method: standard # String: minmax, standard, or mean
 
 mlp:
-  hidden_layers: [256, 512, 256]
+  hidden_layers: [2048, 2048, 2048, 1024, 512, 256]

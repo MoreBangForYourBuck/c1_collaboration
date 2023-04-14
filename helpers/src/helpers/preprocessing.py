@@ -78,11 +78,20 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
         'ann': ann.reset_index(drop=True),
         'ann_t': ann_t.reset_index(drop=True)
     }
+
+def read_all_data_no_zeros(dir_path:str='processed_training_data'):
+    data_dict = read_all_data(dir_path)
+    mask = (np.array(data_dict['ann']) != 0) & (np.array(data_dict['ann']) != 3)
     
-def get_distribution(all_y:List[float], num_classes:int=4) -> Dict[str, List[float]]:
+    for key in data_dict.keys():
+        data_dict[key] = np.array(data_dict[key][mask])
+        print(key, data_dict[key].shape)
+    return data_dict
+
+def get_distribution(all_y:List[float], num_classes:int=4, class_offset:int=0) -> Dict[str, List[float]]:
     return {
-        'counts': [all_y.count(x) for x in range(num_classes)],
-        'fracs': [all_y.count(x)/len(all_y) for x in range(num_classes)]
+        'counts': [all_y.count(x) for x in range(class_offset, num_classes+class_offset)],
+        'fracs': [all_y.count(x)/len(all_y) for x in range(class_offset, num_classes+class_offset)]
     }
 
 def normalize_data(arr:np.ndarray, method:str) -> Tuple[np.ndarray, Optional[Union[StandardScaler, MinMaxScaler]]]:

@@ -1,15 +1,15 @@
-batch_size: 2048
-epochs: 4
+batch_size: 1024
+epochs: 10
 learning_rate: 0.1
-num_classes: 4
+num_classes: 2
 weighted_loss: True # Boolean
 val_size: 0.2 # Float: Size of validation in train/val split
-shuffle_split: True # Boolean: whether to shuffle samples. NOT FOR TIMESERIES
+shuffle_split: False # Boolean: whether to shuffle samples. NOT FOR TIMESERIES
 normalize:
-  run: True # Boolean: bypasses method
+  run: False # Boolean: bypasses method
   method: standard # String: minmax, standard, or mean
 
 lstm:
   hidden_size: 512
   num_layers: 3
-  window_size: 20
+  window_size: 60

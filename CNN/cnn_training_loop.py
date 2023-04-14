@@ -1,6 +1,6 @@
 from helpers import TrainingLoop
 import yaml
-from helpers.preprocessing import read_all_data
+from helpers.preprocessing import read_all_data, read_all_data_no_zeros
 from cnn_architecture import CNNDataset, CNN
 import torch
 from helpers.eval import load_model
@@ -11,10 +11,15 @@ if __name__ == '__main__':
     NAME = 'cnn_4_9_{0}'.format(str(time.time()).split('.')[0])
     print(NAME)
     
-    data_dict = read_all_data()
+    data_dict = read_all_data(dir_path='unnormalized_training_data')
     imu = data_dict['imu'].to_numpy()
     ann = data_dict['ann'].to_numpy().flatten()
     del data_dict # Remove to free memory
+    
+    # data_dict = read_all_data_no_zeros()
+    # imu = data_dict['imu']
+    # ann = data_dict['ann'].flatten() - 1
+    # del data_dict
     
     with open('CNN/cnn_hyperparams.yaml', 'r') as f:
         hyperparams = yaml.safe_load(f)

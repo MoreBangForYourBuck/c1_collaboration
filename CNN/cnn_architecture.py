@@ -32,10 +32,10 @@ class CNN(nn.Module):
         self.bn4 = nn.BatchNorm1d(16)
         self.dropout4 = nn.Dropout(0.2)
         
-        self.conv5 = nn.Conv1d(in_channels=16, out_channels=4, kernel_size=hyperparams['cnn']['kernel_size'], stride=1,
-                               padding='same')
+        self.conv5 = nn.Conv1d(in_channels=16, out_channels=hyperparams['num_classes'],
+                               kernel_size=hyperparams['cnn']['kernel_size'], stride=1, padding='same')
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(4*hyperparams['cnn']['window_size'], 4)
+        self.fc = nn.Linear(hyperparams['num_classes']*hyperparams['cnn']['window_size'], hyperparams['num_classes'])
         self.softmax = nn.Softmax(dim=1)
     
     def forward(self, x):
@@ -72,8 +72,8 @@ class CNN(nn.Module):
         x = self.softmax(x)
         return x
 
+
 class CNNDataset(torch.utils.data.Dataset):
-    
     def __init__(self, X, y, device, hyperparams:dict):
         self.device = device
         self.window_size = hyperparams['cnn']['window_size']
