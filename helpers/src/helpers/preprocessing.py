@@ -57,20 +57,35 @@ def read_all_data(dir_path:str='processed_training_data') -> Dict[str, pd.DataFr
     imu_t = pd.DataFrame()
     ann = pd.DataFrame()
     ann_t = pd.DataFrame()
-
-    for f in os.listdir(dir_path):
+    
+    imu_i = []
+    imu_t_i = []
+    ann_i = []
+    ann_t_i = []
+    
+    dirpaths = os.listdir(dir_path)
+    dirpaths.sort()
+    for f in dirpaths:
+        print(f)
         x = pd.read_csv(f'{dir_path}/{f}')
         if f[-7:] == '__x.csv':
+            imu_i.append(f[-13:-7])
             imu = pd.concat([imu, x], axis=0)
         
         elif f[-12:] == '__x_time.csv':
+            imu_t_i.append(f[-18:-12])
             imu_t = pd.concat([imu_t, x], axis=0)
             
         elif f[-7:] == '__y.csv':
+            ann_i.append(f[-13:-7])
             ann = pd.concat([ann, x], axis=0)
             
         elif f[-12:] == '__y_time.csv':
+            ann_t_i.append(f[-18:-12])
             ann_t = pd.concat([ann_t, x], axis=0)
+            
+    assert imu_i == imu_t_i == ann_i == ann_t_i, 'File names do not match'
+    print(imu_i, ann_i)
 
     return {
         'imu': imu.reset_index(drop=True),
