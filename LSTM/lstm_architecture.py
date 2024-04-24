@@ -1,4 +1,5 @@
 from torch import nn
+import scipy
 import torch
 
 
@@ -22,8 +23,8 @@ class LSTMModel(nn.Module):
         x, (h, c) = self.lstm(x) #lstm with input, hidden, and internal state
         # print(h.shape)
         x = x[:, -1, :] # Use last time step's output
-        # out = self.relu(h.view(-1, self.hidden_size))
-        # out = self.fc1(h)
+        out = self.relu(h.view(-1, self.hidden_size))
+        out = self.fc1(h)
         out = self.relu(out)
         out = self.fc2(out)
         out = self.relu(out)
@@ -58,7 +59,7 @@ class LSTMDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return (
             torch.tensor(self.X[idx:idx+self.window_size], device=self.device),
-            torch.tensor(self.y[idx+self.window_size], device=self.device)
+            torch.tensor(scipy.stats.mode(self.y[idx+self.window_size]), device=self.device)
         )
         
         

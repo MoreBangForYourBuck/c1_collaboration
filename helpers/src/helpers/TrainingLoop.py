@@ -69,10 +69,10 @@ class TrainingLoop:
             print(f'Epoch {epoch}')
             
             # Batch train
+            self.model.train()
             batch_train_loss_history = []
             for (X, y) in tqdm(self.train_generator):
                 self.optimizer.zero_grad()
-                self.model.train()
                 
                 y_p = self.model(X)
                 loss = self.criterion(y_p, y)
